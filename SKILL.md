@@ -70,10 +70,14 @@ Create a detailed, structured prompt for Nano Banana Pro that describes the arch
 #### Diagram Style Requirements
 
 **Always specify**:
-- "A professional cloud architecture diagram"
-- "Clean, technical illustration style"
-- "Use official AWS/Azure/GCP icon style for resources"
+- "A professional cloud architecture diagram with a clean border"
+- "Clean, crisp technical illustration style with modern design aesthetics"
+- "Use official AWS/Azure/GCP icon style for resources - colorful, recognizable icons"
 - "White or light gray background for clarity"
+- "Include a prominent title at the top of the diagram"
+- "Include a brief description or subtitle below the title"
+- "Professional border around the entire diagram (subtle, not distracting)"
+- "High-quality, sharp rendering with clear icon details"
 
 #### Hierarchical Organization
 
@@ -142,6 +146,8 @@ Describe how resources connect:
 #### Labels and Text
 
 **Critical - Specify Exact Text**:
+- **Always include a title at the top**: "At the very top of the diagram is a prominent title reading '[Architecture Name]'"
+- **Always include a subtitle/description**: "with a subtitle below it stating '[Brief Description]'"
 - Enclose all labels in single quotes within the prompt
 - "The VPC container is labeled 'Production VPC (10.0.0.0/16)'"
 - "The Load Balancer is labeled 'web-alb'"
@@ -162,7 +168,7 @@ Describe how resources connect:
 
 **Three-Tier Web Application**:
 ```
-A professional AWS cloud architecture diagram in a clean technical illustration style. The diagram uses official AWS icon styles on a white background.
+A professional AWS cloud architecture diagram with a clean, crisp technical illustration style and modern design aesthetics. The entire diagram has a subtle professional border. At the very top of the diagram is a prominent title reading 'Three-Tier Web Application Architecture', with a subtitle below it stating 'Production Environment - AWS us-east-1'. The diagram uses official AWS icon styles with colorful, recognizable icons on a white background. High-quality, sharp rendering with clear icon details.
 
 The architecture shows a VPC labeled 'Production VPC (10.0.0.0/16)' represented as a large rectangular container with a dashed border.
 
@@ -190,7 +196,7 @@ The layout flows left to right showing the request path from internet to databas
 
 **Microservices on Kubernetes**:
 ```
-A professional Kubernetes architecture diagram in a clean technical illustration style on a white background.
+A professional Kubernetes architecture diagram with a clean, crisp technical illustration style and modern design aesthetics. The entire diagram has a subtle professional border. At the very top is a prominent title reading 'Microservices Architecture on Kubernetes', with a subtitle below stating 'EKS Production Cluster'. The diagram uses official Kubernetes icon styles with colorful, recognizable icons on a white background. High-quality, sharp rendering with clear icon details.
 
 The diagram shows a Kubernetes cluster represented by a large container labeled 'EKS Cluster (k8s-prod)'.
 
@@ -273,6 +279,9 @@ After generating the diagram, provide the user with:
 ## Best Practices
 
 ### DO:
+- **Always include a border, title, and brief description** in every diagram prompt
+- Specify "clean, crisp design" and "high-quality, sharp rendering" for professional output
+- Use "colorful, recognizable icons" matching official cloud provider styles
 - Start with the highest level of hierarchy (region/VPC) and work down to individual resources
 - Use official cloud provider icon terminology in prompts
 - Specify exact text for all labels in single quotes
