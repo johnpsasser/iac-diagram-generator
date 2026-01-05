@@ -58,6 +58,7 @@ echo "Installing Python dependencies..."
 echo "Required: pyyaml"
 echo "Optional: python-hcl2 (better Terraform parsing)"
 echo "Optional: tfparse (best Terraform parsing, requires terraform init)"
+echo "Optional: cfn-lint (better CloudFormation parsing)"
 
 # Function to install a package
 install_package() {
@@ -100,6 +101,9 @@ if [ "$PYTHON_MINOR" -ge 10 ]; then
 else
     echo "  ⚠ tfparse skipped (requires Python 3.10+, you have 3.$PYTHON_MINOR)"
 fi
+
+# Optional - better CloudFormation parsing
+install_package "cfn-lint" "optional"
 
 echo
 

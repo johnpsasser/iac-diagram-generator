@@ -431,10 +431,41 @@ terraform init  # Downloads providers, resolves modules
 - **Features**: Resource extraction, parameter resolution, intrinsic function parsing
 - **Dependencies**: `DependsOn`, `Ref`, `GetAtt` references
 
+**CloudFormation Parsing Tiers** (automatic selection):
+
+| Parser | Accuracy | Requirements | What It Does |
+|--------|----------|--------------|--------------|
+| **cfn-lint** | Best | `pip install cfn-lint` | Full intrinsic function parsing |
+| **PyYAML** | Good | Built-in | Basic YAML with reference extraction |
+
+The parser extracts dependencies from:
+- `!Ref` / `Fn::Ref` - Direct resource references
+- `!GetAtt` / `Fn::GetAtt` - Attribute lookups
+- `!Sub` / `Fn::Sub` - String substitution references
+- `DependsOn` - Explicit dependencies
+- `Fn::If` - Conditional branch scanning
+
 ### Kubernetes
 - **Extensions**: `.yaml`, `.yml` (manifests, Helm templates)
 - **Features**: Resource extraction, label selectors, namespace organization
 - **Dependencies**: Service selectors, ConfigMap/Secret references, ownerReferences
+
+**Kubernetes Relationship Detection** (inspired by [KubeDiagrams](https://github.com/philippemerle/KubeDiagrams)):
+
+| Relationship | Example | Detection Method |
+|--------------|---------|------------------|
+| **SELECTOR** | Service → Deployment | Label selector matching |
+| **OWNER** | Deployment → Pod | Implicit ownership hierarchy |
+| **REFERENCE** | Ingress → Service | Backend service references |
+| **MOUNT** | Deployment → ConfigMap | Volume mount definitions |
+| **COMMUNICATION** | NetworkPolicy rules | Ingress/egress pod selectors |
+
+**Supported Kubernetes Resources** (20+ types):
+- Workloads: Deployment, StatefulSet, DaemonSet, Job, CronJob, Pod
+- Networking: Service, Ingress, NetworkPolicy
+- Config: ConfigMap, Secret
+- Storage: PersistentVolume, PersistentVolumeClaim
+- RBAC: Role, ClusterRole, RoleBinding, ClusterRoleBinding, ServiceAccount
 
 ### Docker Compose
 - **Extensions**: `docker-compose.yaml`, `docker-compose.yml`
@@ -510,6 +541,12 @@ pip install python-hcl2
 
 # Best: Full evaluation with terraform init (Python 3.10+ required)
 pip install tfparse
+```
+
+For better CloudFormation parsing:
+```bash
+# Accurate intrinsic function parsing (!Ref, !GetAtt, !Sub)
+pip install cfn-lint
 ```
 
 ### Environment Variables
