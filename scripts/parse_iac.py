@@ -3,12 +3,17 @@
 IaC Parser
 Parses Infrastructure as Code files and extracts resource information.
 Supports: Terraform, CloudFormation, Kubernetes, Docker Compose
+Accepts: Local paths or GitHub repository URLs
 """
 
 import os
 import sys
 import json
 import glob as file_glob
+import tempfile
+import shutil
+import subprocess
+import re
 from pathlib import Path
 
 try:
@@ -17,6 +22,104 @@ except ImportError:
     print("ERROR: PyYAML is not installed.")
     print("Please install it with: pip install pyyaml")
     sys.exit(1)
+
+
+def is_github_url(path):
+    """Check if the path is a GitHub URL."""
+    github_patterns = [
+        r'^https?://github\.com/[\w\-\.]+/[\w\-\.]+',
+        r'^git@github\.com:[\w\-\.]+/[\w\-\.]+',
+        r'^github\.com/[\w\-\.]+/[\w\-\.]+',
+    ]
+    for pattern in github_patterns:
+        if re.match(pattern, path):
+            return True
+    return False
+
+
+def normalize_github_url(url):
+    """Normalize GitHub URL to HTTPS clone format."""
+    # Remove trailing slashes and .git
+    url = url.rstrip('/').rstrip('.git')
+
+    # Handle different formats
+    if url.startswith('git@github.com:'):
+        # git@github.com:user/repo -> https://github.com/user/repo
+        url = url.replace('git@github.com:', 'https://github.com/')
+    elif url.startswith('github.com/'):
+        # github.com/user/repo -> https://github.com/user/repo
+        url = 'https://' + url
+    elif not url.startswith('http'):
+        url = 'https://' + url
+
+    return url + '.git'
+
+
+def clone_repository(url, subpath=None):
+    """
+    Clone a GitHub repository to a temporary directory.
+
+    Args:
+        url: GitHub repository URL
+        subpath: Optional subdirectory within the repo to use
+
+    Returns:
+        tuple: (temp_dir, target_path) where target_path is the directory to parse
+    """
+    normalized_url = normalize_github_url(url)
+
+    # Create temp directory
+    temp_dir = tempfile.mkdtemp(prefix='iac_parser_')
+
+    print(f"Cloning repository: {normalized_url}")
+    print(f"  Temp directory: {temp_dir}")
+
+    try:
+        # Clone with depth=1 for speed (we only need latest files)
+        result = subprocess.run(
+            ['git', 'clone', '--depth', '1', normalized_url, temp_dir],
+            capture_output=True,
+            text=True,
+            timeout=120  # 2 minute timeout
+        )
+
+        if result.returncode != 0:
+            print(f"ERROR: Git clone failed: {result.stderr}")
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return None, None
+
+        print("  Clone successful!")
+
+        # Determine target path
+        target_path = temp_dir
+        if subpath:
+            target_path = os.path.join(temp_dir, subpath.lstrip('/'))
+            if not os.path.exists(target_path):
+                print(f"ERROR: Subpath does not exist in repo: {subpath}")
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                return None, None
+
+        return temp_dir, target_path
+
+    except subprocess.TimeoutExpired:
+        print("ERROR: Git clone timed out (120s)")
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return None, None
+    except FileNotFoundError:
+        print("ERROR: Git is not installed or not in PATH")
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return None, None
+    except Exception as e:
+        print(f"ERROR: Failed to clone repository: {str(e)}")
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        return None, None
+
+
+def cleanup_temp_dir(temp_dir):
+    """Clean up temporary directory."""
+    if temp_dir and os.path.exists(temp_dir):
+        print(f"\nCleaning up temp directory: {temp_dir}")
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 # CloudFormation YAML intrinsic function constructors
@@ -427,6 +530,23 @@ def parse_docker_compose(path):
         return {"error": f"Failed to parse Docker Compose file: {str(e)}"}
 
 
+def extract_github_subpath(url):
+    """
+    Extract subpath from GitHub URL if specified.
+
+    Examples:
+        https://github.com/user/repo/tree/main/terraform -> ('https://github.com/user/repo', 'terraform')
+        https://github.com/user/repo -> ('https://github.com/user/repo', None)
+    """
+    # Match URLs with /tree/branch/path or /blob/branch/path
+    match = re.match(r'^(https?://github\.com/[\w\-\.]+/[\w\-\.]+)(?:/(?:tree|blob)/[^/]+)?(?:/(.+))?$', url)
+    if match:
+        base_url = match.group(1)
+        subpath = match.group(2)
+        return base_url, subpath
+    return url, None
+
+
 def main():
     """Main entry point for the IaC parser."""
     if len(sys.argv) < 3:
@@ -437,44 +557,69 @@ def main():
         print("  cloudformation  - Parse CloudFormation templates (.yaml, .json)")
         print("  kubernetes      - Parse Kubernetes manifests (.yaml)")
         print("  docker-compose  - Parse Docker Compose files")
+        print("\nPath can be:")
+        print("  - Local file or directory")
+        print("  - GitHub repository URL (will be cloned automatically)")
         print("\nExamples:")
         print("  python parse_iac.py terraform ./infrastructure")
         print("  python parse_iac.py cloudformation template.yaml")
         print("  python parse_iac.py kubernetes ./k8s")
         print("  python parse_iac.py docker-compose docker-compose.yaml")
+        print("\n  # GitHub repositories:")
+        print("  python parse_iac.py terraform https://github.com/user/repo")
+        print("  python parse_iac.py terraform https://github.com/user/repo/tree/main/terraform")
+        print("  python parse_iac.py cloudformation github.com/user/repo")
         sys.exit(1)
 
     iac_format = sys.argv[1].lower()
     path = sys.argv[2]
 
-    # Validate path
-    if not os.path.exists(path):
-        print(f"ERROR: Path does not exist: {path}")
-        sys.exit(1)
+    temp_dir = None  # Track temp directory for cleanup
 
-    # Parse based on format
-    if iac_format == "terraform":
-        result = parse_terraform(path)
-    elif iac_format == "cloudformation":
-        result = parse_cloudformation(path)
-    elif iac_format == "kubernetes":
-        result = parse_kubernetes(path)
-    elif iac_format == "docker-compose":
-        result = parse_docker_compose(path)
+    # Check if path is a GitHub URL
+    if is_github_url(path):
+        # Extract base URL and optional subpath
+        base_url, subpath = extract_github_subpath(path)
+
+        # Clone the repository
+        temp_dir, path = clone_repository(base_url, subpath)
+        if not path:
+            sys.exit(1)
     else:
-        print(f"ERROR: Unsupported format: {iac_format}")
-        print("Supported formats: terraform, cloudformation, kubernetes, docker-compose")
-        sys.exit(1)
+        # Validate local path
+        if not os.path.exists(path):
+            print(f"ERROR: Path does not exist: {path}")
+            sys.exit(1)
 
-    # Output JSON result
-    print("\n" + "="*60)
-    print("PARSE RESULT:")
-    print("="*60)
-    print(json.dumps(result, indent=2))
+    try:
+        # Parse based on format
+        if iac_format == "terraform":
+            result = parse_terraform(path)
+        elif iac_format == "cloudformation":
+            result = parse_cloudformation(path)
+        elif iac_format == "kubernetes":
+            result = parse_kubernetes(path)
+        elif iac_format == "docker-compose":
+            result = parse_docker_compose(path)
+        else:
+            print(f"ERROR: Unsupported format: {iac_format}")
+            print("Supported formats: terraform, cloudformation, kubernetes, docker-compose")
+            sys.exit(1)
 
-    # Check for errors
-    if "error" in result:
-        sys.exit(1)
+        # Output JSON result
+        print("\n" + "="*60)
+        print("PARSE RESULT:")
+        print("="*60)
+        print(json.dumps(result, indent=2))
+
+        # Check for errors
+        if "error" in result:
+            sys.exit(1)
+
+    finally:
+        # Always clean up temp directory
+        if temp_dir:
+            cleanup_temp_dir(temp_dir)
 
 
 if __name__ == "__main__":

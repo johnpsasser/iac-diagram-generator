@@ -32,8 +32,9 @@ If no specific file is mentioned, search the current directory recursively.
 
 ### Step 2: Validate and Parse IaC Files
 
-Run the appropriate parser script based on file type:
+Run the appropriate parser script based on file type. The parser accepts **local paths or GitHub repository URLs**.
 
+**Local files/directories:**
 ```bash
 # Terraform
 python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py terraform path/to/terraform/dir
@@ -47,6 +48,26 @@ python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py kubernetes pa
 # Docker Compose
 python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py docker-compose path/to/docker-compose.yaml
 ```
+
+**GitHub repositories (cloned automatically):**
+```bash
+# Clone entire repo and parse
+python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py terraform https://github.com/user/repo
+
+# Clone and parse specific subdirectory
+python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py terraform https://github.com/user/repo/tree/main/infrastructure
+
+# Short format also works
+python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py terraform github.com/user/repo
+```
+
+**Supported GitHub URL formats:**
+- `https://github.com/user/repo`
+- `https://github.com/user/repo/tree/branch/path/to/dir`
+- `github.com/user/repo`
+- `git@github.com:user/repo`
+
+The parser automatically clones the repo to a temp directory, parses the files, and cleans up after.
 
 The parser will return a JSON structure containing:
 - Resources (compute, networking, storage, security)
@@ -558,3 +579,23 @@ All errors include clear messages for troubleshooting.
 4. Create prompt showing namespace organization and service communication
 5. Generate diagram
 6. Provide insights on the microservices architecture
+
+### Example 4: GitHub Repository
+
+**User Request**: "Generate a diagram from https://github.com/example/terraform-aws-vpc"
+
+**Steps**:
+1. Detect the GitHub URL in the user's request
+2. Run: `python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py terraform https://github.com/example/terraform-aws-vpc`
+3. The parser automatically clones the repo, parses, and cleans up
+4. Analyze the JSON output to understand the architecture
+5. Create enhanced Nano Banana Pro prompt
+6. Generate diagram and report location
+
+**User Request**: "Show me the architecture in the /infrastructure folder of https://github.com/example/myapp"
+
+**Steps**:
+1. Detect GitHub URL with subdirectory
+2. Run: `python ~/.claude/skills/iac-diagram-generator/scripts/parse_iac.py terraform https://github.com/example/myapp/tree/main/infrastructure`
+3. Only the specified subdirectory is parsed
+4. Continue with diagram generation
