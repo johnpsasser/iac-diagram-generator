@@ -65,19 +65,58 @@ Review the parsed structure to understand:
 
 ### Step 4: Generate Nano Banana Pro Diagram Prompt
 
-Create a detailed, structured prompt for Nano Banana Pro that describes the architecture diagram using natural language. Follow these guidelines:
+Create a detailed, structured prompt for Nano Banana Pro that describes the architecture diagram using natural language. Follow these guidelines carefully to ensure **consistent, visually stunning results**.
 
-#### Diagram Style Requirements
+#### Visual Design System
 
-**Always specify**:
-- "A professional cloud architecture diagram with a clean border"
-- "Clean, crisp technical illustration style with modern design aesthetics"
-- "Use official AWS/Azure/GCP icon style for resources - colorful, recognizable icons"
-- "White or light gray background for clarity"
-- "Include a prominent title at the top of the diagram"
-- "Include a brief description or subtitle below the title"
-- "Professional border around the entire diagram (subtle, not distracting)"
-- "High-quality, sharp rendering with clear icon details"
+Every diagram MUST follow this standardized visual template for consistency:
+
+**Canvas & Outer Margins:**
+- "A professional 16:9 landscape architecture diagram"
+- "The canvas has a clean white outer margin (at least 60 pixels on all sides) creating breathing room before the page edge"
+- "This outer margin ensures no content touches or approaches the canvas boundaries"
+
+**Border Frame (Inside the outer margin):**
+- "A subtle rounded-corner border with a thin dark gray stroke frames all diagram content"
+- "Everything - header, zones, connections, legend, and logos - is contained INSIDE this border"
+- "An inner padding of 30 pixels separates all content from the border edge"
+
+**Header Section (Inside the frame, top 12%):**
+- "A gradient header bar spans the full width inside the frame, transitioning from deep navy blue (#1a365d) on the left to teal (#0d9488) on the right"
+- "The title '[ARCHITECTURE NAME]' appears in large, bold white sans-serif text (like Inter or SF Pro) centered in the header"
+- "A subtitle below reads '[Brief Description]' in smaller light gray text"
+
+**Main Canvas (Inside the frame, middle 78%):**
+- "The main area has a very light cool gray background (#f8fafc)"
+- "Architectural zones are represented as softly colored rectangular regions with rounded corners and subtle drop shadows"
+- "Adequate spacing between zones prevents crowding"
+
+**Footer Section (Inside the frame, bottom 10%):**
+- "A thin footer bar INSIDE the frame contains a compact legend with small icon samples and labels"
+- "Cloud provider logo (AWS/Azure/GCP) appears discretely in the bottom-right corner, INSIDE the border frame"
+- "The legend and logo have the same inner padding from the border as other content"
+
+#### Icon & Visual Style
+
+**Use Isometric 3D Style (NOT flat official icons):**
+- "All resource icons are rendered in a clean isometric 3D style with subtle shadows"
+- "Icons have a consistent 30-degree isometric angle and soft gradient fills"
+- "Each icon type uses a distinct, harmonious color from a modern tech palette"
+- "Icons are crisp, detailed, and visually appealing - like high-end infographic illustrations"
+
+**Color Palette for Icons:**
+- Compute (EC2, Lambda, Containers): Warm orange (#f97316) to coral
+- Networking (VPC, Load Balancers, Gateways): Purple (#8b5cf6) to indigo
+- Storage (S3, EBS, EFS): Green (#22c55e) to emerald
+- Database (RDS, DynamoDB, ElastiCache): Blue (#3b82f6) to sky blue
+- Security (IAM, KMS, WAF): Red (#ef4444) to rose
+- Analytics (Athena, Glue, Kinesis): Teal (#14b8a6) to cyan
+
+**Zone/Layer Backgrounds:**
+- Public/Internet zone: Very light blue tint (#eff6ff) with dashed blue border
+- Private/Application zone: Very light green tint (#f0fdf4) with dashed green border
+- Data/Database zone: Very light amber tint (#fffbeb) with dashed amber border
+- Security/Governance zone: Very light slate tint (#f1f5f9) with dashed gray border
 
 #### Hierarchical Organization
 
@@ -128,20 +167,28 @@ For each resource type, use appropriate descriptions:
 
 #### Connections and Data Flow
 
-Describe how resources connect:
+Describe how resources connect using consistent visual styling:
 
-**Connection Types**:
-- "A solid green arrow labeled 'HTTPS' connects the Internet Gateway to the Load Balancer"
-- "Blue arrows labeled 'HTTP' connect the Load Balancer to the EC2 instances"
-- "Red dashed arrows labeled 'PostgreSQL' connect the EC2 instances to the RDS database"
+**Connection Arrow Styles:**
+- "All connection arrows are smooth, curved bezier paths (not straight lines) with subtle shadows"
+- "Arrow heads are small, elegant triangles"
+- "Connection lines have a consistent 3px stroke width"
 
-**Bidirectional Connections**:
-- "A two-way arrow labeled 'VPC Peering' connects VPC-A to VPC-B"
+**Connection Color Coding:**
+- Internet/External traffic: Bright blue (#3b82f6) solid arrows
+- Internal HTTP/REST: Purple (#8b5cf6) solid arrows
+- Database connections: Amber (#f59e0b) dashed arrows
+- Async/Queue messages: Green (#22c55e) dotted arrows
+- Security/Auth flows: Red (#ef4444) solid arrows
 
-**Network Boundaries**:
-- "The public subnet has a path to the Internet Gateway"
-- "The private subnet routes through a NAT Gateway for outbound access"
-- "The database subnet has no direct internet access"
+**Connection Labels:**
+- "Each arrow has a small pill-shaped label with white background and the protocol/port (e.g., 'HTTPS 443', 'PostgreSQL 5432')"
+- "Labels are positioned along the arrow path, not overlapping other elements"
+
+**Data Flow Direction:**
+- "The primary data flow moves left-to-right, with internet entry on the left"
+- "Vertical flows indicate writes going down, reads going up"
+- "Return paths are shown as lighter, thinner arrows parallel to the main flow"
 
 #### Labels and Text
 
@@ -168,68 +215,150 @@ Describe how resources connect:
 
 **Three-Tier Web Application**:
 ```
-A professional AWS cloud architecture diagram with a clean, crisp technical illustration style and modern design aesthetics. The entire diagram has a subtle professional border. At the very top of the diagram is a prominent title reading 'Three-Tier Web Application Architecture', with a subtitle below it stating 'Production Environment - AWS us-east-1'. The diagram uses official AWS icon styles with colorful, recognizable icons on a white background. High-quality, sharp rendering with clear icon details.
+A professional 16:9 landscape cloud architecture diagram in a stunning modern infographic style.
 
-The architecture shows a VPC labeled 'Production VPC (10.0.0.0/16)' represented as a large rectangular container with a dashed border.
+CANVAS AND MARGINS:
+The image has a generous white outer margin (at least 60 pixels on all sides) so no content approaches the page edges. Inside this margin, a subtle rounded-corner border with a thin charcoal stroke frames the entire diagram. All content is contained inside this border with comfortable inner padding.
 
-Inside the VPC, there are three horizontal sections representing subnets:
+HEADER (inside the frame):
+A gradient header bar spans the top inside the frame, transitioning from deep navy blue on the left to teal on the right. The title 'Three-Tier Web Application' appears in large, bold white sans-serif text centered in the header. A subtitle below reads 'AWS Production Environment • us-east-1' in smaller light blue text.
 
-In the 'Public Subnet (10.0.1.0/24)' on the left:
-- An Internet Gateway icon at the far left edge
-- An Application Load Balancer icon labeled 'web-alb' connected to the Internet Gateway
+MAIN CANVAS:
+The main area has a very light cool gray background. The layout flows left-to-right showing the request path from internet to database. Generous spacing between all elements.
 
-In the 'Private Subnet (10.0.2.0/24)' in the center:
-- Three EC2 instance icons arranged vertically, labeled 'web-1', 'web-2', and 'web-3'
-- These instances are grouped within a dotted border labeled 'web-sg security group'
+VISUAL STYLE:
+All icons are rendered in a clean isometric 3D style with subtle drop shadows and soft gradient fills. Icons are crisp, detailed, and visually appealing like high-end tech infographic illustrations. Each resource type uses harmonious colors from a modern palette.
 
-In the 'Database Subnet (10.0.3.0/24)' on the right:
-- An RDS database cylinder icon labeled 'PostgreSQL (db.t3.medium)'
-- A dotted border labeled 'db-sg security group' surrounds it
+ARCHITECTURE ZONES (arranged left to right):
 
-Connections shown with arrows:
-- A solid green arrow labeled 'HTTPS' connects the Internet Gateway to the Load Balancer
-- Blue arrows labeled 'HTTP' connect the Load Balancer to each of the three EC2 instances
-- Red dashed arrows labeled 'PostgreSQL:5432' connect each EC2 instance to the RDS database
+ZONE 1 - Internet Entry (far left):
+A small cloud icon labeled 'Internet' with a globe symbol. A bright blue curved arrow flows rightward.
 
-The layout flows left to right showing the request path from internet to database. All resources are clearly labeled and evenly spaced. The style is professional and technical, suitable for architecture documentation.
+ZONE 2 - Public Layer (light blue tinted rectangle with dashed blue border, labeled 'Public Subnet 10.0.1.0/24'):
+- A purple isometric Internet Gateway icon with network symbol
+- A purple isometric Application Load Balancer icon labeled 'web-alb' with a circular distribution symbol
+- Blue curved arrows connect them showing HTTPS flow
+
+ZONE 3 - Application Layer (light green tinted rectangle with dashed green border, labeled 'Private Subnet 10.0.2.0/24'):
+- Three orange isometric EC2 server icons arranged in a clean row, each labeled 'web-1', 'web-2', 'web-3'
+- The servers are grouped within a subtle dotted security boundary labeled 'web-sg'
+- Purple curved arrows from the load balancer fan out to each server
+
+ZONE 4 - Data Layer (light amber tinted rectangle with dashed amber border, labeled 'Database Subnet 10.0.3.0/24'):
+- A blue isometric RDS database cylinder icon with a subtle glow, labeled 'PostgreSQL Primary'
+- A smaller replica icon labeled 'Read Replica' below it
+- Amber dashed curved arrows connect from the EC2 instances with pill-shaped labels reading 'PostgreSQL 5432'
+
+FOOTER (inside the frame, at the bottom):
+A thin footer bar inside the border frame contains a compact legend showing icon types with labels. The AWS logo appears discretely in the bottom-right corner, also inside the frame. Everything is well within the border with no content touching or extending beyond it.
+
+The overall aesthetic is clean, modern, and visually stunning - suitable for executive presentations and technical documentation alike.
 ```
 
 **Microservices on Kubernetes**:
 ```
-A professional Kubernetes architecture diagram with a clean, crisp technical illustration style and modern design aesthetics. The entire diagram has a subtle professional border. At the very top is a prominent title reading 'Microservices Architecture on Kubernetes', with a subtitle below stating 'EKS Production Cluster'. The diagram uses official Kubernetes icon styles with colorful, recognizable icons on a white background. High-quality, sharp rendering with clear icon details.
+A professional 16:9 landscape Kubernetes architecture diagram in a stunning modern infographic style.
 
-The diagram shows a Kubernetes cluster represented by a large container labeled 'EKS Cluster (k8s-prod)'.
+CANVAS AND MARGINS:
+The image has a generous white outer margin (at least 60 pixels on all sides) so no content approaches the page edges. Inside this margin, a subtle rounded-corner border with a thin charcoal stroke frames the entire diagram. All content is contained inside this border.
 
-At the top:
-- An Ingress Controller icon labeled 'nginx-ingress' with an arrow from 'Internet' entering from above
+HEADER (inside the frame):
+A gradient header bar spans the top inside the frame, transitioning from deep indigo on the left to violet on the right. The title 'Microservices on Kubernetes' appears in large, bold white sans-serif text. A subtitle reads 'EKS Production Cluster • Multi-Namespace Architecture' in smaller light purple text.
 
-Inside the cluster, three namespace containers arranged horizontally:
+MAIN CANVAS:
+Light cool gray background (#f8fafc). The diagram represents a Kubernetes cluster as a large rounded rectangle with a subtle shadow. Generous spacing between elements.
 
-The 'frontend' namespace (blue-tinted background) contains:
-- Three Pod icons labeled 'web-app' arranged in a row
-- A Service icon labeled 'frontend-svc' above the pods
+VISUAL STYLE:
+All icons are clean isometric 3D with subtle shadows and modern gradient fills. The Kubernetes wheel logo appears subtly watermarked in the cluster background.
 
-The 'backend' namespace (green-tinted background) contains:
-- Three Pod icons labeled 'api-server'
-- A Service icon labeled 'api-svc'
-- Two Pod icons labeled 'worker'
+CLUSTER BOUNDARY:
+A large rounded rectangle with a thin purple dashed border labeled 'EKS Cluster: k8s-prod' in the top-left corner.
 
-The 'data' namespace (orange-tinted background) contains:
-- A StatefulSet icon labeled 'postgres'
-- A PersistentVolumeClaim icon labeled 'db-storage'
+INGRESS (top of cluster):
+A purple isometric ingress controller icon labeled 'nginx-ingress' sits at the top center. A blue curved arrow enters from above, originating from a cloud/globe icon labeled 'Internet'.
 
-Connections:
-- A green arrow labeled 'HTTPS' from the Ingress to 'frontend-svc'
-- Blue arrows labeled 'HTTP' from frontend pods to 'api-svc'
-- Red arrows labeled 'gRPC' from api-server pods to worker pods
-- Purple dashed arrows labeled 'PostgreSQL' from api-server pods to the postgres StatefulSet
+NAMESPACE ZONES (arranged horizontally inside the cluster):
 
-External resources shown outside the cluster box:
-- An S3 bucket icon labeled 'user-uploads' connected with a dashed line to worker pods
-- An RDS icon labeled 'analytics-db' connected to api-server pods
+ZONE 1 - Frontend Namespace (light blue tinted rectangle with rounded corners):
+- Header label: 'namespace: frontend'
+- A purple Service icon labeled 'frontend-svc' at the top
+- Three orange Pod icons in a row below, each labeled 'web-app'
+- Pods connected to the service with thin lines
 
-The layout is organized with clear namespace boundaries and color-coded sections. Resources are evenly spaced with non-overlapping labels.
+ZONE 2 - Backend Namespace (light green tinted rectangle):
+- Header label: 'namespace: backend'
+- A purple Service icon labeled 'api-svc'
+- Three orange Pod icons labeled 'api-server'
+- Two teal Pod icons labeled 'worker' below
+- Internal green dotted arrows show async messaging
+
+ZONE 3 - Data Namespace (light amber tinted rectangle):
+- Header label: 'namespace: data'
+- A blue isometric StatefulSet icon labeled 'postgres'
+- A green PVC icon labeled 'db-storage' connected below
+
+CONNECTIONS:
+- Bright blue curved arrow with 'HTTPS 443' label from ingress to frontend service
+- Purple curved arrows with 'HTTP 8080' labels from frontend pods to api-svc
+- Amber dashed arrows with 'PostgreSQL 5432' labels from api pods to postgres
+
+EXTERNAL SERVICES (outside cluster, right side):
+- A green isometric S3 bucket icon labeled 'user-uploads'
+- A blue RDS icon labeled 'analytics-db'
+- Green dotted arrows connect worker pods to S3, amber dashed arrows connect api pods to RDS
+
+FOOTER (inside the frame, at the bottom):
+A compact footer bar inside the border frame shows a legend with icon samples and labels. Kubernetes logo on left, AWS logo on right - all inside the frame with no content touching the border edge.
+
+The diagram is visually polished with consistent spacing, harmonious colors, generous margins, and professional aesthetics suitable for architecture review presentations.
 ```
+
+### Step 5.5: Quick Prompt Template
+
+Use this template as a starting point, filling in the bracketed sections:
+
+```
+A professional 16:9 landscape cloud architecture diagram in a stunning modern infographic style.
+
+CANVAS AND MARGINS:
+The image has a generous white outer margin (at least 60 pixels on all sides) so no content approaches the page edges. Inside this margin, a subtle rounded-corner border with a thin charcoal stroke frames all diagram content. Everything is contained inside this border with comfortable inner padding.
+
+HEADER (inside the frame):
+A gradient header bar spans the top inside the frame, transitioning from [PRIMARY_COLOR] on the left to [SECONDARY_COLOR] on the right. The title '[ARCHITECTURE_NAME]' appears in large, bold white sans-serif text. A subtitle reads '[DESCRIPTION] • [REGION/ENVIRONMENT]' in smaller light text.
+
+MAIN CANVAS:
+Light cool gray background (#f8fafc). Layout flows left-to-right showing the data/request path. Generous spacing between all elements.
+
+VISUAL STYLE:
+All icons are clean isometric 3D with subtle drop shadows and soft gradient fills - like high-end tech infographic illustrations. Consistent color palette: orange for compute, purple for networking, blue for databases, green for storage, teal for analytics.
+
+ARCHITECTURE ZONES:
+[Describe each zone with tinted background color, dashed border, label, and contained resources]
+
+ZONE 1 - [ZONE_NAME] ([ZONE_COLOR] tinted rectangle with dashed border):
+- [Resource descriptions with isometric style, color, and labels]
+
+ZONE 2 - [ZONE_NAME] ([ZONE_COLOR] tinted rectangle):
+- [Resource descriptions]
+
+[Continue for additional zones...]
+
+CONNECTIONS:
+[Describe each connection with curved bezier arrows, color, and pill-shaped labels]
+- [COLOR] curved arrow with '[PROTOCOL PORT]' label from [SOURCE] to [DESTINATION]
+
+FOOTER (inside the frame, at the bottom):
+A compact footer bar inside the border frame shows a legend with icon samples and labels. [PROVIDER] logo in bottom-right corner - all inside the frame with no content touching or extending beyond the border.
+
+The diagram is visually polished with generous margins, consistent spacing, harmonious colors, and professional aesthetics.
+```
+
+**Color suggestions for headers:**
+- AWS: Navy blue (#1a365d) → Teal (#0d9488)
+- Azure: Dark blue (#1e3a5f) → Cyan (#06b6d4)
+- GCP: Deep blue (#1e40af) → Red (#dc2626)
+- Kubernetes: Indigo (#3730a3) → Violet (#7c3aed)
+- Multi-cloud: Slate (#334155) → Purple (#9333ea)
 
 ### Step 6: Generate the Diagram
 
@@ -279,24 +408,30 @@ After generating the diagram, provide the user with:
 ## Best Practices
 
 ### DO:
-- **Always include a border, title, and brief description** in every diagram prompt
-- Specify "clean, crisp design" and "high-quality, sharp rendering" for professional output
-- Use "colorful, recognizable icons" matching official cloud provider styles
-- Start with the highest level of hierarchy (region/VPC) and work down to individual resources
-- Use official cloud provider icon terminology in prompts
-- Specify exact text for all labels in single quotes
-- Describe connection types and protocols clearly
-- Group resources by security boundaries (VPCs, subnets, security groups)
-- Use color coding for different resource types or environments
-- Include CIDR blocks for networks and subnets
-- Show directionality of connections (arrows pointing from source to destination)
+- **Always use the standardized visual template** - 16:9 landscape, gradient header, framed border, footer legend
+- **Specify isometric 3D icon style** - NOT flat official cloud icons; use "clean isometric 3D with subtle shadows and gradient fills"
+- **Use the defined color palette** consistently - orange for compute, purple for networking, blue for databases, green for storage
+- **Define zones with tinted backgrounds** - light blue for public, light green for private, light amber for data layers
+- **Describe curved bezier arrows** for connections, not straight lines
+- **Include pill-shaped labels** on connection arrows with protocol and port
+- **Start prompts with canvas/frame description** before architecture content
+- **Use narrative descriptions** - full sentences describing spatial relationships, not keyword lists
+- **Group resources visually** by security boundaries with dotted/dashed borders
+- **Specify left-to-right data flow** as the default orientation
+- **Include CIDR blocks** in zone labels for networks
+- **End with aesthetic summary** - reinforce "visually stunning, professional" quality
 
 ### DON'T:
-- Mix different cloud providers in the same diagram unless it's a multi-cloud architecture
-- Omit security boundaries and network segmentation
-- Create overly complex diagrams with too many resources (split into multiple diagrams if needed)
-- Forget to label connections with protocol and port information
-- Use vague descriptions like "some servers" (be specific about resource types and names)
+- Request "official AWS/Azure/GCP icons" - they produce inconsistent, flat results
+- Use white backgrounds - specify "very light cool gray (#f8fafc)" instead
+- Forget the header gradient and title placement
+- Use straight line arrows - always specify curved/bezier paths
+- Mix icon styles within the same diagram
+- Create cluttered diagrams - if >15 resources, split into multiple focused diagrams
+- Use generic descriptions like "some servers" - be specific with names and counts
+- Omit connection labels - every arrow needs a protocol/port label
+- Forget the footer legend - it adds polish and professionalism
+- Skip the zone background colors - they're essential for visual hierarchy
 
 ## Common Architecture Patterns
 
@@ -345,6 +480,35 @@ For CloudFormation validation:
 ```bash
 pip install cfn-lint
 ```
+
+## Vector Output (Post-Processing)
+
+Nano Banana Pro generates raster images (PNG), not vector files. For editable SVG/PDF output, use a vectorization tool as a post-processing step:
+
+### Recommended Vectorization Tools
+
+**Best Quality:**
+- [Vectorizer.AI](https://vectorizer.ai/) - Deep learning-based, outputs SVG/PDF/EPS/DXF
+- [Vector Magic](https://vectormagic.com/) - Full-color tracing, also has desktop app for Illustrator
+
+**Free Options:**
+- [Recraft AI Vectorizer](https://www.recraft.ai/ai-image-vectorizer) - Free, one-click PNG→SVG, also exports Lottie
+- [AI Vector](https://aivector.ai/) - 100% free, no registration, claims 99.9% accuracy
+- [SVGConverter.app](https://svgconverter.app/) - Free, supports multiple output formats
+
+### Workflow for Editable Diagrams
+
+1. Generate PNG diagram using this skill
+2. Upload to vectorization tool of choice
+3. Download SVG/PDF/EPS output
+4. Edit in Figma, Illustrator, Inkscape, or similar
+
+### Tips for Better Vectorization
+
+- The isometric 3D style with solid colors vectorizes better than photorealistic images
+- Clean lines and distinct color zones improve tracing accuracy
+- Simpler diagrams (fewer overlapping elements) produce cleaner vectors
+- Some manual cleanup in a vector editor may still be needed for complex diagrams
 
 ## Error Handling
 
