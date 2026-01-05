@@ -55,19 +55,53 @@ echo "Found Python $PYTHON_VERSION"
 # Install Python dependencies
 echo
 echo "Installing Python dependencies..."
-echo "This will install: pyyaml"
+echo "Required: pyyaml"
+echo "Optional: python-hcl2 (better Terraform parsing)"
+echo "Optional: tfparse (best Terraform parsing, requires terraform init)"
 
-# Try to install with different methods based on system
-if python3 -m pip install pyyaml --quiet 2>/dev/null; then
-    echo "Dependencies installed successfully"
-elif python3 -m pip install pyyaml --user --quiet 2>/dev/null; then
-    echo "Dependencies installed successfully (user)"
-elif python3 -m pip install pyyaml --break-system-packages --quiet 2>/dev/null; then
-    echo "Dependencies installed successfully (system packages)"
-else
-    echo "WARNING: Could not install dependencies automatically."
+# Function to install a package
+install_package() {
+    local package=$1
+    local optional=$2
+
+    if python3 -m pip install "$package" --quiet 2>/dev/null; then
+        echo "  ✓ $package installed"
+        return 0
+    elif python3 -m pip install "$package" --user --quiet 2>/dev/null; then
+        echo "  ✓ $package installed (user)"
+        return 0
+    elif python3 -m pip install "$package" --break-system-packages --quiet 2>/dev/null; then
+        echo "  ✓ $package installed (system)"
+        return 0
+    else
+        if [ "$optional" = "optional" ]; then
+            echo "  ⚠ $package not installed (optional)"
+        else
+            echo "  ✗ $package failed to install"
+        fi
+        return 1
+    fi
+}
+
+echo
+# Required
+install_package "pyyaml" "required" || {
+    echo "WARNING: Could not install pyyaml automatically."
     echo "Please install manually: pip install pyyaml"
+}
+
+# Optional - better Terraform parsing
+install_package "python-hcl2" "optional"
+
+# Optional - best Terraform parsing (requires Python 3.10+)
+PYTHON_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
+if [ "$PYTHON_MINOR" -ge 10 ]; then
+    install_package "tfparse" "optional"
+else
+    echo "  ⚠ tfparse skipped (requires Python 3.10+, you have 3.$PYTHON_MINOR)"
 fi
+
+echo
 
 # Check for nanobanana skill (required for diagram generation)
 NANOBANANA_DIR="$HOME/.claude/skills/nanobanana"

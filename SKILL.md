@@ -406,6 +406,26 @@ After generating the diagram, provide the user with:
 - **Features**: Resource extraction, module resolution, variable handling
 - **Dependencies**: Explicit (`depends_on`) and implicit (resource references)
 
+**Terraform Parsing Tiers** (automatic selection):
+
+| Parser | Accuracy | Requirements | What It Does |
+|--------|----------|--------------|--------------|
+| **tfparse** | Best | `terraform init` run, Python 3.10+ | Full expression evaluation, accurate dependencies |
+| **python-hcl2** | Good | None | Proper HCL2 syntax parsing, reference extraction |
+| **regex** | Basic | None | Simple pattern matching, inferred dependencies |
+
+The parser automatically selects the best available option:
+1. If `.terraform/` exists and tfparse is installed → uses tfparse
+2. If python-hcl2 is installed → uses hcl2
+3. Falls back to regex extraction
+
+**For best results with Terraform:**
+```bash
+cd /path/to/terraform
+terraform init  # Downloads providers, resolves modules
+# Then run the diagram generator
+```
+
 ### AWS CloudFormation
 - **Extensions**: `.yaml`, `.yml`, `.json`, `.template`
 - **Features**: Resource extraction, parameter resolution, intrinsic function parsing
@@ -478,7 +498,18 @@ After generating the diagram, provide the user with:
 ### Required Python Packages
 
 ```bash
-pip install pyyaml google-genai
+pip install pyyaml
+```
+
+### Optional (Recommended) Packages
+
+For better Terraform parsing:
+```bash
+# Good: HCL2 parsing without terraform init
+pip install python-hcl2
+
+# Best: Full evaluation with terraform init (Python 3.10+ required)
+pip install tfparse
 ```
 
 ### Environment Variables

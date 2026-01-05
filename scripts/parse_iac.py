@@ -23,6 +23,20 @@ except ImportError:
     print("Please install it with: pip install pyyaml")
     sys.exit(1)
 
+# Optional: tfparse for accurate Terraform parsing (requires terraform init)
+try:
+    from tfparse import load_from_path as tfparse_load
+    TFPARSE_AVAILABLE = True
+except ImportError:
+    TFPARSE_AVAILABLE = False
+
+# Optional: python-hcl2 for HCL2 parsing without terraform init
+try:
+    import hcl2
+    HCL2_AVAILABLE = True
+except ImportError:
+    HCL2_AVAILABLE = False
+
 
 def is_github_url(path):
     """Check if the path is a GitHub URL."""
@@ -143,11 +157,309 @@ def parse_terraform(path):
     """
     Parse Terraform files (.tf) to extract resources.
 
-    Note: This is a simplified parser that handles basic HCL syntax.
-    For production use, consider using tfparse or the official HCL parser.
+    Uses a tiered approach:
+    1. tfparse (most accurate, requires terraform init)
+    2. python-hcl2 (good accuracy, no init required)
+    3. regex fallback (basic extraction)
     """
     print(f"Parsing Terraform files in: {path}")
 
+    # Check if .terraform directory exists (needed for tfparse)
+    terraform_dir = os.path.join(path, ".terraform") if os.path.isdir(path) else None
+    has_terraform_init = terraform_dir and os.path.exists(terraform_dir)
+
+    # Try tfparse first (most accurate)
+    if TFPARSE_AVAILABLE and has_terraform_init:
+        print("  Using tfparse (terraform init detected)")
+        result = parse_terraform_with_tfparse(path)
+        if "error" not in result:
+            return result
+        print(f"  tfparse failed: {result.get('error')}, falling back...")
+    elif TFPARSE_AVAILABLE and not has_terraform_init:
+        print("  tfparse available but no .terraform/ directory (run 'terraform init' for best results)")
+
+    # Try python-hcl2 next
+    if HCL2_AVAILABLE:
+        print("  Using python-hcl2")
+        result = parse_terraform_with_hcl2(path)
+        if "error" not in result:
+            return result
+        print(f"  hcl2 failed: {result.get('error')}, falling back...")
+
+    # Fall back to regex
+    print("  Using regex fallback (basic extraction)")
+    return parse_terraform_with_regex(path)
+
+
+def parse_terraform_with_tfparse(path):
+    """
+    Parse Terraform using tfparse (Cloud Custodian).
+    Provides full expression evaluation and accurate dependency tracking.
+    Requires 'terraform init' to have been run.
+    """
+    try:
+        parsed = tfparse_load(path)
+
+        resources = []
+        dependencies = {}
+        modules = []
+        data_sources = []
+
+        # Process each resource type
+        for resource_type, resource_instances in parsed.items():
+            # Skip non-resource entries
+            if resource_type in ('variable', 'output', 'locals', 'terraform', 'provider'):
+                continue
+
+            if resource_type == 'module':
+                for instance in resource_instances:
+                    modules.append({
+                        "name": instance.get('__tfmeta', {}).get('label', 'unknown'),
+                        "source": instance.get('source', ''),
+                    })
+                continue
+
+            if resource_type == 'data':
+                for instance in resource_instances:
+                    meta = instance.get('__tfmeta', {})
+                    data_sources.append({
+                        "type": meta.get('label', 'unknown'),
+                        "name": meta.get('path', 'unknown'),
+                    })
+                continue
+
+            # Process resources
+            for instance in resource_instances:
+                meta = instance.get('__tfmeta', {})
+                resource_name = meta.get('label', 'unknown')
+                full_name = f"{resource_type}.{resource_name}"
+
+                # Extract provider from resource type
+                provider = resource_type.split("_")[0] if "_" in resource_type else "unknown"
+
+                resource_data = {
+                    "type": resource_type,
+                    "name": resource_name,
+                    "full_name": full_name,
+                    "provider": provider,
+                    "attributes": {k: v for k, v in instance.items() if not k.startswith('__')},
+                }
+                resources.append(resource_data)
+
+                # Extract dependencies from attribute references
+                deps = extract_tfparse_dependencies(instance, resource_type)
+                if deps:
+                    dependencies[full_name] = deps
+
+        return {
+            "format": "terraform",
+            "parser": "tfparse",
+            "resources": resources,
+            "modules": modules,
+            "data_sources": data_sources,
+            "total_resources": len(resources),
+            "dependencies": dependencies,
+        }
+
+    except Exception as e:
+        return {"error": f"tfparse failed: {str(e)}"}
+
+
+def extract_tfparse_dependencies(resource_attrs, resource_type):
+    """
+    Extract resource dependencies from tfparse output.
+    Looks for references in attribute values.
+    """
+    dependencies = set()
+
+    def find_references(obj, path=""):
+        """Recursively find resource references in attribute values."""
+        if isinstance(obj, str):
+            # Look for resource references like "aws_subnet.main.id"
+            ref_pattern = r'([a-z_]+\.[a-z0-9_-]+)(?:\.[a-z_]+)?'
+            for match in re.finditer(ref_pattern, obj):
+                ref = match.group(1)
+                # Filter out common non-resource patterns
+                if not ref.startswith(('var.', 'local.', 'data.', 'module.', 'path.', 'terraform.')):
+                    # Validate it looks like a resource reference
+                    parts = ref.split('.')
+                    if len(parts) == 2 and '_' in parts[0]:
+                        dependencies.add(ref)
+        elif isinstance(obj, dict):
+            for key, value in obj.items():
+                if not key.startswith('__'):
+                    find_references(value, f"{path}.{key}")
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                find_references(item, f"{path}[{i}]")
+
+    find_references(resource_attrs)
+    return list(dependencies)
+
+
+def parse_terraform_with_hcl2(path):
+    """
+    Parse Terraform using python-hcl2.
+    Good for syntax parsing without terraform init.
+    """
+    try:
+        # Find all .tf files
+        if os.path.isfile(path):
+            tf_files = [path]
+        else:
+            tf_files = file_glob.glob(os.path.join(path, "**/*.tf"), recursive=True)
+
+        if not tf_files:
+            return {"error": "No Terraform files found", "resources": [], "dependencies": {}}
+
+        resources = []
+        variables = {}
+        modules = []
+        locals_block = {}
+        outputs = {}
+        all_content = {}
+
+        for tf_file in tf_files:
+            print(f"    Reading: {tf_file}")
+            try:
+                with open(tf_file, 'r') as f:
+                    parsed = hcl2.load(f)
+                    all_content[tf_file] = parsed
+
+                # Extract resources
+                for resource_block in parsed.get('resource', []):
+                    for resource_type, instances in resource_block.items():
+                        for instance in instances:
+                            for resource_name, attrs in instance.items():
+                                full_name = f"{resource_type}.{resource_name}"
+                                provider = resource_type.split("_")[0] if "_" in resource_type else "unknown"
+
+                                resources.append({
+                                    "type": resource_type,
+                                    "name": resource_name,
+                                    "full_name": full_name,
+                                    "provider": provider,
+                                    "file": tf_file,
+                                    "attributes": attrs,
+                                })
+
+                # Extract variables
+                for var_block in parsed.get('variable', []):
+                    for var_name, var_config in var_block.items():
+                        variables[var_name] = {
+                            "name": var_name,
+                            "file": tf_file,
+                            "default": var_config.get('default'),
+                            "type": var_config.get('type'),
+                            "description": var_config.get('description'),
+                        }
+
+                # Extract modules
+                for module_block in parsed.get('module', []):
+                    for module_name, module_config in module_block.items():
+                        modules.append({
+                            "name": module_name,
+                            "source": module_config.get('source', ''),
+                            "file": tf_file,
+                        })
+
+                # Extract locals
+                for locals_block_item in parsed.get('locals', []):
+                    locals_block.update(locals_block_item)
+
+                # Extract outputs
+                for output_block in parsed.get('output', []):
+                    for output_name, output_config in output_block.items():
+                        outputs[output_name] = {
+                            "name": output_name,
+                            "value": output_config.get('value'),
+                            "file": tf_file,
+                        }
+
+            except Exception as e:
+                print(f"    Warning: Error parsing {tf_file}: {e}")
+                continue
+
+        # Extract dependencies from resource attributes
+        dependencies = extract_hcl2_dependencies(resources)
+
+        return {
+            "format": "terraform",
+            "parser": "hcl2",
+            "resources": resources,
+            "variables": variables,
+            "modules": modules,
+            "locals": locals_block,
+            "outputs": outputs,
+            "total_resources": len(resources),
+            "dependencies": dependencies,
+        }
+
+    except Exception as e:
+        return {"error": f"hcl2 parsing failed: {str(e)}"}
+
+
+def extract_hcl2_dependencies(resources):
+    """
+    Extract dependencies from HCL2 parsed resources by analyzing attribute references.
+    """
+    dependencies = {}
+
+    # Build a set of known resource full names
+    known_resources = {r["full_name"] for r in resources}
+
+    def find_refs_in_value(value):
+        """Find resource references in a value (handles ${} interpolation)."""
+        refs = set()
+
+        if isinstance(value, str):
+            # Match patterns like: aws_subnet.main.id, ${aws_vpc.main.id}
+            patterns = [
+                r'\$\{([a-z_]+\.[a-z0-9_-]+)(?:\.[a-z_]+)*\}',  # ${resource.name.attr}
+                r'([a-z_]+\.[a-z0-9_-]+)(?:\.[a-z_]+)',  # resource.name.attr
+            ]
+            for pattern in patterns:
+                for match in re.finditer(pattern, value):
+                    ref = match.group(1)
+                    if ref in known_resources:
+                        refs.add(ref)
+        elif isinstance(value, dict):
+            for v in value.values():
+                refs.update(find_refs_in_value(v))
+        elif isinstance(value, list):
+            for item in value:
+                refs.update(find_refs_in_value(item))
+
+        return refs
+
+    for resource in resources:
+        full_name = resource["full_name"]
+        attrs = resource.get("attributes", {})
+
+        # Find all references in attributes
+        refs = find_refs_in_value(attrs)
+
+        # Also check depends_on if present
+        depends_on = attrs.get("depends_on", [])
+        if isinstance(depends_on, list):
+            for dep in depends_on:
+                if isinstance(dep, str):
+                    # Clean up the reference
+                    dep_clean = dep.replace("${", "").replace("}", "").split(".")[0:2]
+                    if len(dep_clean) == 2:
+                        refs.add(".".join(dep_clean))
+
+        if refs:
+            dependencies[full_name] = list(refs)
+
+    return dependencies
+
+
+def parse_terraform_with_regex(path):
+    """
+    Parse Terraform using regex (fallback).
+    Basic extraction without full HCL understanding.
+    """
     # Find all .tf files
     if os.path.isfile(path):
         tf_files = [path]
@@ -162,14 +474,10 @@ def parse_terraform(path):
     modules = []
 
     for tf_file in tf_files:
-        print(f"  Reading: {tf_file}")
+        print(f"    Reading: {tf_file}")
         try:
             with open(tf_file, 'r') as f:
                 content = f.read()
-
-            # Basic resource extraction (simplified - real HCL parsing is complex)
-            # Look for resource blocks: resource "type" "name" { ... }
-            import re
 
             # Extract resources
             resource_pattern = r'resource\s+"([^"]+)"\s+"([^"]+)"\s+\{'
@@ -197,22 +505,22 @@ def parse_terraform(path):
                 modules.append({"name": module_name, "file": tf_file})
 
         except Exception as e:
-            print(f"  Warning: Error reading {tf_file}: {e}")
+            print(f"    Warning: Error reading {tf_file}: {e}")
             continue
 
     return {
         "format": "terraform",
+        "parser": "regex",
         "resources": resources,
         "variables": variables,
         "modules": modules,
         "total_resources": len(resources),
-        "dependencies": extract_terraform_dependencies(resources)
+        "dependencies": extract_regex_dependencies(resources)
     }
 
 
-def extract_terraform_dependencies(resources):
-    """Extract basic dependency information from Terraform resources."""
-    # Simplified - real dependency extraction requires parsing resource attributes
+def extract_regex_dependencies(resources):
+    """Extract basic dependency information using pattern inference (fallback)."""
     dependencies = {}
 
     # Group resources by type for basic relationship inference
@@ -230,7 +538,6 @@ def extract_terraform_dependencies(resources):
 
         # Common AWS patterns
         if r_type == "aws_instance":
-            # Instances typically depend on VPC, subnet, security group
             if "aws_vpc" in resource_types:
                 deps.extend([f"aws_vpc.{name}" for name in resource_types["aws_vpc"]])
             if "aws_subnet" in resource_types:
@@ -238,17 +545,32 @@ def extract_terraform_dependencies(resources):
             if "aws_security_group" in resource_types:
                 deps.extend([f"aws_security_group.{name}" for name in resource_types["aws_security_group"]])
 
-        elif r_type == "aws_elb" or r_type == "aws_lb":
-            # Load balancers depend on subnets and security groups
+        elif r_type in ("aws_elb", "aws_lb", "aws_alb"):
             if "aws_subnet" in resource_types:
                 deps.extend([f"aws_subnet.{name}" for name in resource_types["aws_subnet"]])
+            if "aws_security_group" in resource_types:
+                deps.extend([f"aws_security_group.{name}" for name in resource_types["aws_security_group"]])
 
         elif r_type == "aws_db_instance":
-            # RDS depends on subnet groups and security groups
             if "aws_db_subnet_group" in resource_types:
                 deps.extend([f"aws_db_subnet_group.{name}" for name in resource_types["aws_db_subnet_group"]])
+            if "aws_security_group" in resource_types:
+                deps.extend([f"aws_security_group.{name}" for name in resource_types["aws_security_group"]])
 
-        dependencies[resource["full_name"]] = deps
+        elif r_type == "aws_subnet":
+            if "aws_vpc" in resource_types:
+                deps.extend([f"aws_vpc.{name}" for name in resource_types["aws_vpc"]])
+
+        elif r_type == "aws_security_group":
+            if "aws_vpc" in resource_types:
+                deps.extend([f"aws_vpc.{name}" for name in resource_types["aws_vpc"]])
+
+        elif r_type == "aws_lambda_function":
+            if "aws_iam_role" in resource_types:
+                deps.extend([f"aws_iam_role.{name}" for name in resource_types["aws_iam_role"]])
+
+        if deps:
+            dependencies[resource["full_name"]] = deps
 
     return dependencies
 
