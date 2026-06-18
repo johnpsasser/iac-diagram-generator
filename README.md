@@ -1,8 +1,79 @@
 # IaC Diagram Generator
 
-Generate professional cloud architecture diagrams from Infrastructure as Code files. Works with Terraform, CloudFormation, Kubernetes, Docker Compose, and more.
+A Claude Code plugin that generates professional cloud architecture diagrams from
+Infrastructure as Code. Parses Terraform, CloudFormation, Kubernetes, and Docker
+Compose into a resource graph, then renders a polished diagram with Nano Banana Pro
+(Gemini 3 Pro Image).
 
-## Quick Install
+## Install (recommended — plugin marketplace)
+
+In Claude Code:
+
+```
+/plugin marketplace add 0-to-1-Labs/claude-marketplace
+/plugin install iac-diagram-generator@0to1-labs
+```
+
+Then set a Gemini API key (used for diagram rendering):
+
+```bash
+export GEMINI_API_KEY='your-key-here'   # https://aistudio.google.com/apikey
+```
+
+That's it — diagram generation is bundled, no separate image skill required.
+
+## Requirements
+
+- Claude Code CLI
+- Python 3.7+ (PyYAML is required; `google-genai` is auto-installed on first render)
+- A Gemini API key
+
+Nano Banana Pro renders at roughly **$0.134/image** and embeds a **SynthID**
+watermark marking output as AI-generated.
+
+## Usage
+
+Just ask Claude Code:
+
+```
+"Generate an architecture diagram from my Terraform code"
+"Show me what this CloudFormation template deploys"
+"Diagram our Kubernetes application in the k8s/ directory"
+"Visualize my compose.yaml services"
+"Diagram the infrastructure in https://github.com/user/repo"
+```
+
+Claude will detect and parse the IaC, extract resources/relationships/topology,
+build an optimized prompt, and save a `iac_diagram_*.png` in your current directory.
+
+## Supported formats (parsing)
+
+| Format | Extensions | Notes |
+|--------|-----------|-------|
+| **Terraform** | `.tf`, `.tfvars` | Tiered: tfparse → python-hcl2 → regex |
+| **CloudFormation** | `.yaml`, `.yml`, `.json`, `.template` | Tiered: cfn-lint → PyYAML; resolves `Ref`/`GetAtt`/`Sub` |
+| **Kubernetes** | `.yaml`, `.yml` | 20+ kinds; selector/owner/reference/mount/network relationships |
+| **Docker Compose** | `compose.yaml`, `docker-compose.yaml`, … | Services, networks, volumes, `depends_on` |
+
+**Not yet supported:** Pulumi, Azure ARM/Bicep, GCP Deployment Manager. (The skill
+will say so and offer to read the files manually instead of guessing.)
+
+### Optional parser upgrades
+
+```bash
+pip install python-hcl2   # better Terraform parsing (no terraform init needed)
+pip install tfparse       # best Terraform parsing (needs terraform init, Python 3.10+)
+pip install cfn-lint      # accurate CloudFormation intrinsic-function parsing
+```
+
+## How it works
+
+1. **Parse** — `scripts/parse_iac.py` scans your files (or a GitHub URL) into a JSON resource/dependency graph
+2. **Analyze** — extracts hierarchy (VPC > subnets > resources / cluster > namespaces), dependencies, connection types, security boundaries
+3. **Prompt** — Claude builds a structured Nano Banana Pro prompt following a consistent visual design system
+4. **Render** — `scripts/generate_diagram.py` produces a PNG
+
+## Manual install (legacy, no plugin)
 
 ```bash
 git clone https://github.com/johnpsasser/iac-diagram-generator.git
@@ -10,168 +81,28 @@ cd iac-diagram-generator
 ./install.sh
 ```
 
-## Requirements
+This copies the skill into `~/.claude/skills/iac-diagram-generator/`.
 
-- Claude Code CLI
-- [nanobanana skill](https://github.com/johnpsasser/nanobanana) (for diagram generation)
-- Python 3.7+
-- Gemini API key (get one at [ai.google.dev](https://aistudio.google.com/apikey))
+## Editable vector output
 
-## Usage
-
-After installation, just ask Claude Code to analyze your infrastructure:
-
-```bash
-# From a directory with Terraform files
-"Generate an architecture diagram from my Terraform code"
-
-# From a specific CloudFormation template
-"Show me what this CloudFormation template deploys"
-
-# From Kubernetes manifests
-"Diagram our Kubernetes application in the k8s/ directory"
-
-# From Docker Compose
-"Visualize my docker-compose.yaml services"
-```
-
-Claude Code will automatically:
-1. Detect and parse your IaC files
-2. Extract resources, relationships, and network topology
-3. Generate a detailed architecture diagram using AI
-4. Save the diagram as a PNG in your current directory
-
-## Supported Formats
-
-### Terraform
-- `.tf` and `.tfvars` files
-- Extracts resources, modules, and variables
-- Identifies provider-specific resources (AWS, Azure, GCP)
-
-### CloudFormation
-- `.yaml`, `.yml`, `.json`, `.template` files
-- Parses resources with intrinsic functions (Ref, GetAtt)
-- Extracts explicit and implicit dependencies
-
-### Kubernetes
-- Manifest files (`.yaml`, `.yml`)
-- Helm chart templates
-- Identifies Deployments, Services, Ingresses, and relationships
-
-### Docker Compose
-- `docker-compose.yaml` files
-- Extracts services, networks, volumes
-- Maps service dependencies and connections
-
-## How It Works
-
-1. **Parse**: The skill scans your directory for IaC files and parses them into a structured representation
-2. **Analyze**: Extracts resource hierarchies (VPC > Subnets > Resources), dependencies, and connection types
-3. **Generate**: Creates an optimized prompt for Nano Banana Pro describing the architecture in detail
-4. **Render**: Generates a professional diagram using AI image generation
-
-## Example Outputs
-
-### Three-Tier Web Application
-From a CloudFormation template defining a VPC, load balancer, EC2 instances, and RDS database, the skill generates a diagram showing:
-- VPC with labeled CIDR blocks
-- Public, private, and database subnets
-- Internet gateway and load balancer
-- Application servers grouped by security group
-- Database with security boundaries
-- Connection arrows labeled with protocols (HTTPS, HTTP, PostgreSQL)
-
-### Microservices on Kubernetes
-From Kubernetes manifests, generates diagrams showing:
-- Namespace organization
-- Services and their pod selectors
-- Ingress routing rules
-- External dependencies (S3, RDS)
-- Inter-service communication
-
-## Manual Installation
-
-If you prefer manual setup:
-
-```bash
-# 1. Copy skill files
-mkdir -p ~/.claude/skills/iac-diagram-generator
-cp -r SKILL.md scripts ~/.claude/skills/iac-diagram-generator/
-
-# 2. Install Python dependencies
-pip install pyyaml
-
-# 3. Set your Gemini API key
-export GEMINI_API_KEY='your-key-here'
-
-# 4. Install nanobanana skill
-git clone https://github.com/johnpsasser/nanobanana.git
-cd nanobanana && ./install.sh
-```
-
-## Parsing Details
-
-### Terraform
-Uses regex-based HCL parsing to extract resource blocks. For production use with complex Terraform (modules, dynamic blocks, count/for_each), consider using `tfparse` or the official HCL parser.
-
-### CloudFormation
-Handles CloudFormation intrinsic functions (!Ref, !GetAtt, !Sub, etc.) and extracts both explicit (DependsOn) and implicit (Ref references) dependencies.
-
-### Kubernetes
-Parses multi-document YAML files and extracts label-based relationships between Services, Deployments, and Pods.
-
-### Docker Compose
-Extracts service definitions, dependency chains (depends_on), network membership, and volume mounts.
-
-## Troubleshooting
-
-**Parser errors**:
-- Ensure IaC files are syntactically valid
-- For Terraform, check that resource blocks follow standard format
-- For CloudFormation, validate against AWS schema
-
-**No diagram generated**:
-- Verify nanobanana skill is installed
-- Check GEMINI_API_KEY environment variable is set
-- Review Claude Code output for error messages
-
-**Incomplete diagrams**:
-- Parser uses simplified extraction for complex IaC features
-- Consider manually verifying resource relationships
-- Large architectures may benefit from splitting into multiple diagrams
-
-## Architecture
-
-The skill consists of:
-
-- `SKILL.md` - Main skill definition with diagram generation guidelines
-- `scripts/parse_iac.py` - Python parser for multiple IaC formats
-- `install.sh` - One-click installer script
-
-The parser outputs JSON with resource definitions and dependencies. Claude Code uses this to create detailed prompts for Nano Banana Pro, following architecture diagram best practices (hierarchical organization, proper labeling, connection types, security boundaries).
+Nano Banana Pro outputs PNG. To get editable SVG/PDF, run the PNG through a
+vectorizer — see `skills/iac-diagram-generator/references/vectorization.md`.
 
 ## Limitations
 
-- Terraform parsing is regex-based and may not handle complex HCL features (nested modules, complex expressions)
-- Pulumi support requires static analysis of code (limited compared to declarative formats)
-- Very large infrastructures (100+ resources) may produce cluttered diagrams
+- Terraform regex fallback won't capture complex HCL (nested modules, dynamic blocks); install `tfparse`/`python-hcl2` for accuracy
+- Very large infrastructures (100+ resources) may produce cluttered diagrams — split into focused views
 - Diagram accuracy depends on IaC completeness and AI interpretation
 
 ## Contributing
 
-Contributions welcome. Focus areas:
-- Enhanced Terraform HCL parsing (possibly integrating tfparse)
-- Pulumi language-specific parsers
-- Azure ARM template support
-- GCP Deployment Manager support
-- Additional diagram layout optimizations
+Focus areas: Pulumi / Azure ARM / GCP Deployment Manager parsers, richer
+Terraform expression handling, and layout optimizations.
 
 ## License
 
-MIT. Do whatever you want with it.
+MIT.
 
 ## Credits
 
-Built for Claude Code. Uses Nano Banana Pro (Gemini 3 Pro Image) for diagram generation.
-
-See also: [nanobanana](https://github.com/johnpsasser/nanobanana)
+Built for Claude Code. Uses Nano Banana Pro (Gemini 3 Pro Image) for rendering.
