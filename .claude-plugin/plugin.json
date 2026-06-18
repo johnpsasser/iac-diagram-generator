@@ -1,0 +1,19 @@
+{
+  "name": "iac-diagram-generator",
+  "description": "Analyzes Infrastructure as Code (Terraform, CloudFormation, Kubernetes, Docker Compose) and generates professional cloud architecture diagrams with Nano Banana Pro (Gemini 3 Pro Image).",
+  "version": "1.0.0",
+  "author": {
+    "name": "John P. Sasser"
+  },
+  "homepage": "https://github.com/johnpsasser/iac-diagram-generator",
+  "license": "MIT",
+  "keywords": [
+    "terraform",
+    "cloudformation",
+    "kubernetes",
+    "docker-compose",
+    "architecture",
+    "diagram",
+    "iac"
+  ]
+}

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# IaC Diagram Generator Installer for Claude Code
-# Installs the skill into ~/.claude/skills/
+# IaC Diagram Generator — legacy manual installer for Claude Code.
+# Installs the skill standalone into ~/.claude/skills/.
+#
+# RECOMMENDED instead: install as a plugin via the marketplace —
+#   /plugin marketplace add 0-to-1-Labs/claude-marketplace
+#   /plugin install iac-diagram-generator@0to1-labs
 
 set -e
 
@@ -32,10 +36,10 @@ if [ -d "$SKILL_DIR" ]; then
     rm -rf "$SKILL_DIR"
 fi
 
-# Copy skill files
+# Copy skill files (the skill lives under skills/iac-diagram-generator/)
 echo "Installing skill files to $SKILL_DIR..."
 mkdir -p "$SKILL_DIR"
-cp -r "$SCRIPT_DIR"/* "$SKILL_DIR/"
+cp -r "$SCRIPT_DIR/skills/$SKILL_NAME/." "$SKILL_DIR/"
 
 # Make scripts executable
 chmod +x "$SKILL_DIR"/scripts/*.py
@@ -106,23 +110,6 @@ fi
 install_package "cfn-lint" "optional"
 
 echo
-
-# Check for nanobanana skill (required for diagram generation)
-NANOBANANA_DIR="$HOME/.claude/skills/nanobanana"
-if [ ! -d "$NANOBANANA_DIR" ]; then
-    echo
-    echo "=========================================="
-    echo "WARNING: nanobanana skill not found"
-    echo "=========================================="
-    echo
-    echo "The IaC Diagram Generator requires the nanobanana skill to generate diagrams."
-    echo "Please install it from: https://github.com/johnpsasser/nanobanana"
-    echo
-    echo "Quick install:"
-    echo "  git clone https://github.com/johnpsasser/nanobanana.git /tmp/nanobanana"
-    echo "  cd /tmp/nanobanana && ./install.sh"
-    echo
-fi
 
 # Check for GEMINI_API_KEY
 if [ -z "$GEMINI_API_KEY" ]; then

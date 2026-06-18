@@ -61,8 +61,12 @@ def is_github_url(path):
 
 def normalize_github_url(url):
     """Normalize GitHub URL to HTTPS clone format."""
-    # Remove trailing slashes and .git
-    url = url.rstrip('/').rstrip('.git')
+    # Remove trailing slashes, then a single trailing ".git" suffix.
+    # (rstrip('.git') would strip any trailing '.', 'g', 'i', 't' chars,
+    # corrupting repo names like "...config" or "...integration".)
+    url = url.rstrip('/')
+    if url.endswith('.git'):
+        url = url[:-len('.git')]
 
     # Handle different formats
     if url.startswith('git@github.com:'):
@@ -747,7 +751,6 @@ def extract_cloudformation_refs_deep(obj, resource_ids, parameter_ids, refs=None
             sub_value = obj['Fn::Sub']
             if isinstance(sub_value, str):
                 # Find ${LogicalId} or ${LogicalId.Attribute} patterns
-                import re
                 for match in re.finditer(r'\$\{([^}!]+?)(?:\.[^}]+)?\}', sub_value):
                     ref = match.group(1)
                     if ref in resource_ids:
@@ -940,7 +943,7 @@ def parse_kubernetes(path):
                     }
 
                     # Extract kind-specific fields
-                    resource.update(extract_kubernetes_kind_fields(kind, spec, metadata))
+                    resource.update(extract_kubernetes_kind_fields(kind, spec, metadata, doc))
 
                     resources.append(resource)
 
@@ -977,9 +980,16 @@ def parse_kubernetes(path):
     }
 
 
-def extract_kubernetes_kind_fields(kind, spec, metadata):
-    """Extract kind-specific fields for Kubernetes resources."""
+def extract_kubernetes_kind_fields(kind, spec, metadata, doc=None):
+    """Extract kind-specific fields for Kubernetes resources.
+
+    `doc` is the full manifest document; some fields (ConfigMap `data`,
+    Secret `data`/`type`) live at the document top level, not under spec
+    or metadata.
+    """
     fields = {}
+    if doc is None:
+        doc = {}
 
     if kind == 'Service':
         fields["selector"] = spec.get('selector', {})
@@ -1011,11 +1021,17 @@ def extract_kubernetes_kind_fields(kind, spec, metadata):
         fields["ingress_class"] = spec.get('ingressClassName')
 
     elif kind == 'ConfigMap':
-        fields["data_keys"] = list(metadata.get('data', {}).keys()) if 'data' in metadata else []
+        # `data` and `binaryData` are top-level keys on the document.
+        data_keys = list(doc.get('data', {}).keys())
+        data_keys += list(doc.get('binaryData', {}).keys())
+        fields["data_keys"] = data_keys
 
     elif kind == 'Secret':
-        fields["type"] = metadata.get('type', 'Opaque')
-        fields["data_keys"] = list(metadata.get('data', {}).keys()) if 'data' in metadata else []
+        # `type`, `data`, and `stringData` are top-level keys on the document.
+        fields["type"] = doc.get('type', 'Opaque')
+        data_keys = list(doc.get('data', {}).keys())
+        data_keys += list(doc.get('stringData', {}).keys())
+        fields["data_keys"] = data_keys
 
     elif kind == 'PersistentVolumeClaim':
         fields["storage_class"] = spec.get('storageClassName')
